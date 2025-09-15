@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Heart, Camera, Upload, Star, Trash2 } from "lucide-react"
+import { Heart, Camera, Upload, Star, Trash2, X } from "lucide-react"
 import Image from "next/image"
 import AdminPanel from "@/components/admin-panel"
 
@@ -28,6 +28,7 @@ export default function MemoriesApp() {
 
   const [showForm, setShowForm] = useState(false)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [newMemory, setNewMemory] = useState({
     title: "",
     description: "",
@@ -82,6 +83,7 @@ export default function MemoriesApp() {
     e.preventDefault()
     
     try {
+      console.log('Enviando recuerdo:', newMemory)
       const response = await fetch('/api/memories', {
         method: 'POST',
         headers: {
@@ -90,17 +92,23 @@ export default function MemoriesApp() {
         body: JSON.stringify(newMemory),
       })
 
+      console.log('Respuesta del servidor:', response.status)
+      
       if (response.ok) {
         const savedMemory = await response.json()
+        console.log('Recuerdo guardado:', savedMemory)
         setMemories([savedMemory, ...memories])
         setNewMemory({ title: "", description: "", category: "momentos", author: "Ezequiel" })
         setShowForm(false)
+        alert('¡Recuerdo guardado exitosamente!')
       } else {
-        alert('Error al guardar el recuerdo')
+        const errorData = await response.json()
+        console.error('Error del servidor:', errorData)
+        alert('Error al guardar el recuerdo: ' + (errorData.error || 'Error desconocido'))
       }
     } catch (error) {
       console.error('Error guardando recuerdo:', error)
-      alert('Error al guardar el recuerdo')
+      alert('Error al guardar el recuerdo: ' + (error instanceof Error ? error.message : 'Error desconocido'))
     }
   }
 
@@ -285,7 +293,8 @@ export default function MemoriesApp() {
             return (
               <Card
                 key={memory.id}
-                className="bg-white/10 backdrop-blur-md border-purple-300/30 hover:bg-white/20 transition-all duration-500 transform hover:scale-105 hover:rotate-1 animate-fade-in-up shadow-xl"
+                onClick={() => setSelectedMemory(memory)}
+                className="bg-white/10 backdrop-blur-md border-purple-300/30 hover:bg-white/20 transition-all duration-500 transform hover:scale-105 hover:rotate-1 animate-fade-in-up shadow-xl cursor-pointer"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="p-4 sm:p-6">
@@ -306,7 +315,7 @@ export default function MemoriesApp() {
                         alt={memory.title}
                         width={300}
                         height={200}
-                        className="w-full h-40 sm:h-48 object-cover"
+                        className="w-full h-40 sm:h-48 object-contain bg-gray-800/50"
                       />
                     </div>
                   )}
@@ -364,6 +373,66 @@ export default function MemoriesApp() {
           onUpdateAvatars={handleUpdateAvatars}
           avatars={avatars}
         />
+      )}
+
+      {/* Memory Detail Modal */}
+      {selectedMemory && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white/10 backdrop-blur-md border-purple-300/30">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500">
+                    <Heart className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">{selectedMemory.title}</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="text-purple-200">{selectedMemory.author}</span>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setSelectedMemory(null)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {selectedMemory.imageUrl && (
+                <div className="mb-6 rounded-lg overflow-hidden shadow-xl">
+                  <Image
+                    src={selectedMemory.imageUrl}
+                    alt={selectedMemory.title}
+                    width={600}
+                    height={400}
+                    className="w-full h-64 sm:h-80 object-contain bg-gray-800/50"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Descripción</h3>
+                  <p className="text-purple-200 leading-relaxed text-base">{selectedMemory.description}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Badge variant="outline" className="border-purple-300 text-purple-200 px-3 py-1">
+                    📅 {selectedMemory.date}
+                  </Badge>
+                  <Badge className="bg-purple-500/50 text-purple-100 px-3 py-1">
+                    🏷️ {selectedMemory.category}
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )
