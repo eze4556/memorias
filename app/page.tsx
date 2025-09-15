@@ -44,46 +44,92 @@ export default function MemoriesApp() {
     lunita: "/placeholder.svg?height=48&width=48",
   })
 
-  // Cargar recuerdos desde Firebase al iniciar
+  // Cargar recuerdos y avatares desde Firebase al iniciar
   useEffect(() => {
-    const loadMemories = async () => {
+    const loadData = async () => {
       try {
-        const response = await fetch('/api/memories')
-        if (response.ok) {
-          const data = await response.json()
-          setMemories(data)
+        console.log('=== CARGANDO DATOS INICIALES ===')
+        
+        // Cargar recuerdos
+        console.log('Cargando recuerdos...')
+        const memoriesResponse = await fetch('/api/memories')
+        console.log('Respuesta recuerdos:', memoriesResponse.status)
+        
+        if (memoriesResponse.ok) {
+          const memoriesData = await memoriesResponse.json()
+          console.log('Recuerdos cargados:', memoriesData.length)
+          setMemories(memoriesData)
+        } else {
+          console.error('Error cargando recuerdos:', memoriesResponse.statusText)
+        }
+
+        // Cargar avatares
+        console.log('Cargando avatares...')
+        const avatarsResponse = await fetch('/api/avatars')
+        console.log('Respuesta avatares:', avatarsResponse.status)
+        
+        if (avatarsResponse.ok) {
+          const avatarsData = await avatarsResponse.json()
+          console.log('Avatares cargados:', avatarsData)
+          setAvatars(avatarsData)
+        } else {
+          console.error('Error cargando avatares:', avatarsResponse.statusText)
         }
       } catch (error) {
-        console.error('Error cargando recuerdos:', error)
+        console.error('Error cargando datos:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    // Cargar avatares desde localStorage
-    const savedAvatars = localStorage.getItem('family-avatars')
-    if (savedAvatars) {
-      setAvatars(JSON.parse(savedAvatars))
-    }
-
-    loadMemories()
+    loadData()
   }, [])
 
   const handleAddMemoryFromAdmin = (memory: any) => {
     setMemories([memory, ...memories])
   }
 
-  const handleUpdateAvatars = (newAvatars: any) => {
-    setAvatars(newAvatars)
-    // Guardar avatares en localStorage
-    localStorage.setItem('family-avatars', JSON.stringify(newAvatars))
+  const handleUpdateAvatars = async (newAvatars: any) => {
+    try {
+      const response = await fetch('/api/avatars', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ avatars: newAvatars }),
+      })
+
+      if (response.ok) {
+        setAvatars(newAvatars)
+        alert('Avatares actualizados exitosamente!')
+      } else {
+        alert('Error al actualizar avatares')
+      }
+    } catch (error) {
+      console.error('Error guardando avatares:', error)
+      alert('Error al actualizar avatares')
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    console.log('=== INICIANDO GUARDADO DE RECUERDO ===')
+    console.log('Datos del formulario:', newMemory)
+    
+    // Validar que los campos requeridos estén llenos
+    if (!newMemory.title.trim()) {
+      alert('Por favor ingresa un título para el recuerdo')
+      return
+    }
+    
+    if (!newMemory.description.trim()) {
+      alert('Por favor ingresa una descripción para el recuerdo')
+      return
+    }
+    
     try {
-      console.log('Enviando recuerdo:', newMemory)
+      console.log('Enviando recuerdo a la API...')
       const response = await fetch('/api/memories', {
         method: 'POST',
         headers: {
@@ -92,11 +138,11 @@ export default function MemoriesApp() {
         body: JSON.stringify(newMemory),
       })
 
-      console.log('Respuesta del servidor:', response.status)
+      console.log('Respuesta del servidor:', response.status, response.statusText)
       
       if (response.ok) {
         const savedMemory = await response.json()
-        console.log('Recuerdo guardado:', savedMemory)
+        console.log('Recuerdo guardado exitosamente:', savedMemory)
         setMemories([savedMemory, ...memories])
         setNewMemory({ title: "", description: "", category: "momentos", author: "Ezequiel" })
         setShowForm(false)
@@ -107,8 +153,8 @@ export default function MemoriesApp() {
         alert('Error al guardar el recuerdo: ' + (errorData.error || 'Error desconocido'))
       }
     } catch (error) {
-      console.error('Error guardando recuerdo:', error)
-      alert('Error al guardar el recuerdo: ' + (error instanceof Error ? error.message : 'Error desconocido'))
+      console.error('Error de red:', error)
+      alert('Error de conexión: ' + (error instanceof Error ? error.message : 'Error desconocido'))
     }
   }
 
@@ -264,6 +310,17 @@ export default function MemoriesApp() {
                   >
                     <Upload className="w-4 h-4 mr-2" />
                     Guardar Recuerdo
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      console.log('Botón de prueba clickeado')
+                      console.log('Estado actual:', newMemory)
+                      alert('Botón funciona! Datos: ' + JSON.stringify(newMemory))
+                    }}
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 h-12 px-6 text-base font-medium"
+                  >
+                    🔧 Prueba
                   </Button>
                 </div>
               </form>
